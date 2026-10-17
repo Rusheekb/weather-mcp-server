@@ -1,5 +1,9 @@
 # Weather MCP Server
 
+[![CI](https://github.com/Rusheekb/weather-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/Rusheekb/weather-mcp-server/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that gives AI assistants like Claude live weather for any city in the world: current conditions and daily forecasts up to 16 days, powered by the free [Open-Meteo](https://open-meteo.com) API (no API key needed).
 
 ```
@@ -10,13 +14,13 @@ Claude: (calls get_forecast with city="London", days=4)
 
 ## Features
 
-- **Two tools:** `get_current_weather` and `get_forecast`, with typed, validated parameters
+- **Two tools:** `get_current_weather` and `get_forecast`, with typed, validated parameters and read-only tool annotations
 - **Any city:** names are resolved to coordinates with Open-Meteo's geocoding API
 - **Fahrenheit or Celsius:** wind speed follows (mph or km/h)
 - **Caching:** repeat lookups are answered from memory, with per-data expiry times
 - **Graceful failures:** unknown cities and API outages come back as readable messages, not crashes
 - **Two transports:** stdio for local clients (Claude Code, Claude Desktop) and Streamable HTTP for remote use
-- **Tested offline:** 21 tests against a fake API, including end-to-end tests over the MCP protocol
+- **Tested offline:** 21 tests against a fake API, including end-to-end tests over the MCP protocol, run in CI on Python 3.10–3.13
 
 ## Tools
 
@@ -68,6 +72,21 @@ claude mcp add weather -- /absolute/path/to/.venv/bin/python /absolute/path/to/s
 
 Start a new Claude Code session and ask "What's the weather in Tokyo?"
 
+### Connect to Claude Desktop
+
+Add this to `claude_desktop_config.json` (Settings → Developer → Edit Config), then restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "weather": {
+      "command": "/absolute/path/to/.venv/bin/python",
+      "args": ["/absolute/path/to/server.py"]
+    }
+  }
+}
+```
+
 ### Try it in the MCP Inspector
 
 ```bash
@@ -96,7 +115,10 @@ Point any MCP client that supports Streamable HTTP at that URL.
 ```bash
 pip install -r requirements-dev.txt
 pytest
+ruff check .
 ```
+
+GitHub Actions runs both on every push and pull request, across Python 3.10–3.13.
 
 The tests never hit the network. `conftest.py` provides a fake Open-Meteo API (built on `httpx.MockTransport`) and a fake clock for testing cache expiry. `tests/test_server.py` connects a real MCP client to the server in-process, so the tool schemas, argument validation and responses are tested through the actual protocol.
 
@@ -106,6 +128,7 @@ The tests never hit the network. `conftest.py` provides a fake Open-Meteo API (b
 - **Schema from type hints.** Parameters are declared with `Annotated[..., Field(...)]`. The SDK turns those into the JSON Schema the model reads, including descriptions, the units enum and the 1–16 range on `days`, so the code and the schema can't drift apart.
 - **Caching with different lifetimes.** City lookups are cached for 24 hours, current conditions for 10 minutes (Open-Meteo refreshes every 15), and forecasts for 30 minutes. Unknown cities are cached too, so a repeated typo costs one API call.
 - **Full place names.** "Springfield" exists in many states. Returning "Springfield, Illinois, United States" makes it clear which one was used.
+- **Tool annotations.** Both tools are marked read-only and open-world (they call an outside service), so clients know they're safe to run without changing anything.
 - **Never write to stdout.** In stdio mode, stdout carries the protocol messages, so the server only logs to stderr.
 
 ## Project structure
@@ -118,7 +141,9 @@ tests/
   test_openmeteo.py    API layer tests
   test_server.py       End-to-end tests through an MCP client
 requirements.txt       Runtime dependencies
-requirements-dev.txt   Adds pytest
+requirements-dev.txt   Adds pytest and ruff
+pyproject.toml         Lint and test settings
+.github/workflows/     CI: lint + tests on every push
 ```
 
 ## Built with
@@ -126,3 +151,7 @@ requirements-dev.txt   Adds pytest
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) 2.x (`MCPServer`)
 - [httpx](https://www.python-httpx.org) for async HTTP
 - [Open-Meteo](https://open-meteo.com) for geocoding and weather data
+
+## License
+
+[MIT](LICENSE)

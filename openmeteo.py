@@ -5,8 +5,9 @@ Python objects. server.py turns those into MCP tools.
 """
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import httpx
 

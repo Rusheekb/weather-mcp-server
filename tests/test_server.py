@@ -30,6 +30,10 @@ async def test_lists_both_tools_with_schemas(client):
     assert units["enum"] == ["fahrenheit", "celsius"]
     assert tools["get_current_weather"].input_schema["required"] == ["city"]
 
+    for tool in tools.values():
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.open_world_hint is True
+
 
 async def test_current_weather(client):
     assert await call(client, "get_current_weather", city="Chicago") == (

@@ -12,6 +12,7 @@ from typing import Annotated
 
 import httpx
 from mcp.server import MCPServer
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from openmeteo import Units, WeatherClient, describe_weather_code, unit_labels
@@ -28,8 +29,12 @@ weather = WeatherClient()
 City = Annotated[str, Field(description='City name, e.g. "Chicago" or "Tokyo"')]
 UnitsParam = Annotated[Units, Field(description="Temperature units: fahrenheit (with mph) or celsius (with km/h)")]
 
+# Hints for clients: these tools only read data (safe to call without confirmation)
+# and reach an outside service (results depend on the live world)
+READ_ONLY_WEB = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=True)
 
-@mcp.tool()
+
+@mcp.tool(title="Current weather", annotations=READ_ONLY_WEB)
 async def get_current_weather(city: City, units: UnitsParam = "fahrenheit") -> str:
     """Get the current weather for any city in the world."""
     try:
@@ -50,7 +55,7 @@ async def get_current_weather(city: City, units: UnitsParam = "fahrenheit") -> s
     )
 
 
-@mcp.tool()
+@mcp.tool(title="Weather forecast", annotations=READ_ONLY_WEB)
 async def get_forecast(
     city: City,
     days: Annotated[int, Field(ge=1, le=16, description="Number of days to forecast, starting today (1-16)")] = 3,
